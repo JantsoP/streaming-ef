@@ -45,12 +45,6 @@ SERVER_TYPE=edge
 SHARED_SECRET=2rf93eFTm1dmlxRwDVyfGgkk5QYxVixG7TUW3JLK
 APP_URL=https://well-oarfish-oddly.ngrok-free.app
 
-# DVR S3 Storage Configuration
-DVR_AWS_ACCESS_KEY_ID=
-DVR_AWS_SECRET_ACCESS_KEY=
-DVR_AWS_DEFAULT_REGION=eu-west-1
-DVR_AWS_BUCKET=streaming-dvr
-DVR_AWS_ENDPOINT=https://s3.eurofurence.org
 EOF
 
 # Download Edge Docker Compose configuration
@@ -89,13 +83,29 @@ services:
     networks:
       - streaming
 
+  # OME - OvenMediaEngine streaming server
+  ome:
+    image: airensoft/ovenmediaengine:latest
+    container_name: ome
+    ports:
+      - "1935:1935"   # RTMP
+      - "3333:3333"   # SRT
+      - "8000:8000"   # HLS
+      - "8081:8081"   # DASH
+      - "9000:9000"   # OME API
+    volumes:
+      - ./ome-config:/opt/ovenmediaengine/bin/origin_conf:ro
+    restart: unless-stopped
+    networks:
+      - streaming
+
 networks:
   streaming:
     driver: bridge
 
 volumes:
   caddy-data:
-  caddy-config:DOCKERCOMPOSE
+  caddy-config:
 
 # Create Edge Nginx configuration
 cat > nginx.conf <<'NGINXCONF'
