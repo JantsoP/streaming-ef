@@ -160,8 +160,8 @@ YAML;
         return $this->generateConfig($server, 'caddy');
     }
 
-    public function generateSrsConfig(Server $server): string
+    public function generateOmeConfig(Server $server): string
     {
-        return $this->generateConfig($server, 'srs');
+        return $this->generateConfig($server, 'ome');
     }
 }

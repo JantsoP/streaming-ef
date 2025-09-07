@@ -11,9 +11,18 @@ return [
     |
     */
 
-    // RTMP server configuration
-    'rtmp_host' => env('STREAM_RTMP_HOST', 'localhost:1935'),
-    'rtmp_port' => env('STREAM_RTMP_PORT', 1935),
+    // OME server configuration
+    'ome_host' => env('STREAM_OME_HOST', 'localhost'),
+    'ome_rtmp_port' => env('STREAM_OME_RTMP_PORT', 1935),
+    'ome_srt_port' => env('STREAM_OME_SRT_PORT', 3333),
+    'ome_hls_port' => env('STREAM_OME_HLS_PORT', 8000),
+    'ome_dash_port' => env('STREAM_OME_DASH_PORT', 8081),
+    'ome_llhls_port' => env('STREAM_OME_LLHLS_PORT', 8082),
+    'ome_lldash_port' => env('STREAM_OME_LLDASH_PORT', 8083),
+    'ome_api_port' => env('STREAM_OME_API_PORT', 9000),
+    'ome_dvr_path' => env('STREAM_OME_DVR_PATH', '/dvr/recordings'),
+    'ome_api_url' => env('STREAM_OME_API_URL', 'http://localhost:9000'),
+    'ome_api_key' => env('STREAM_OME_API_KEY', ''),
 
     // Session validation
     'validate_session_ip' => env('STREAM_VALIDATE_SESSION_IP', false),
@@ -44,33 +53,6 @@ return [
         'cooldown_minutes' => env('STREAM_AUTOSCALE_COOLDOWN', 5),
     ],
 
-    // Stream quality settings (bitrates in kbps)
-    'qualities' => [
-        'fhd' => [
-            'resolution' => '1920x1080',
-            'video_bitrate' => 6000,
-            'audio_bitrate' => 192,
-            'fps' => 30,
-        ],
-        'hd' => [
-            'resolution' => '1280x720',
-            'video_bitrate' => 3000,
-            'audio_bitrate' => 160,
-            'fps' => 30,
-        ],
-        'sd' => [
-            'resolution' => '854x480',
-            'video_bitrate' => 1500,
-            'audio_bitrate' => 128,
-            'fps' => 30,
-        ],
-    ],
-
-    // Docker internal networking configuration
-    'docker' => [
-        'hls_host' => env('DOCKER_HLS_HOST', 'edge'),
-        'hls_port' => env('DOCKER_HLS_PORT', 80),
-    ],
 
     // System streamkey for internal operations (thumbnails, monitoring, etc.)
     'system_streamkey' => env('STREAM_SYSTEM_STREAMKEY', ''),

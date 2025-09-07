@@ -188,12 +188,42 @@ class SourceResource extends Resource
                     ])
                     ->action(function ($record, array $data) {
                         $record->update(['status' => $data['status']]);
-                        
                         // Observer will automatically broadcast the status change event
-                        
                         Notification::make()
                             ->title('Status updated')
                             ->body("Source '{$record->name}' status has been updated to {$data['status']}.")
+                            ->success()
+                            ->send();
+                    }),
+                Tables\Actions\Action::make('createOmeStream')
+                    ->label('Create OME Stream')
+                    ->icon('heroicon-o-plus')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $service = new \App\Services\OmeApiService();
+                        $response = $service->createStream([
+                            'id' => $record->slug,
+                            'name' => $record->name,
+                            'description' => $record->description,
+                        ]);
+                        Notification::make()
+                            ->title('OME Stream Created')
+                            ->body('Stream created in OvenMediaEngine: ' . ($response['id'] ?? ''))
+                            ->success()
+                            ->send();
+                    }),
+                Tables\Actions\Action::make('deleteOmeStream')
+                    ->label('Delete OME Stream')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $service = new \App\Services\OmeApiService();
+                        $response = $service->deleteStream($record->slug);
+                        Notification::make()
+                            ->title('OME Stream Deleted')
+                            ->body('Stream deleted in OvenMediaEngine: ' . ($response['id'] ?? $record->slug))
                             ->success()
                             ->send();
                     }),
@@ -206,7 +236,6 @@ class SourceResource extends Resource
                                 ->body('This source has active live shows.')
                                 ->danger()
                                 ->send();
-
                             return false;
                         }
                     }),

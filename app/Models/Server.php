@@ -94,35 +94,30 @@ class Server extends Model
     /**
      * Get the HLS base URL for this server
      */
-    public function getHlsBaseUrl(): string
+    public function getOmeBaseUrl(): string
     {
-        if ($this->type === ServerTypeEnum::ORIGIN) {
-            // Origin server serves HLS directly from SRS
-            $protocol = $this->port === 443 ? 'https' : 'http';
-            $port = in_array($this->port, [80, 443]) ? '' : ':' . $this->port;
-            return "{$protocol}://{$this->hostname}{$port}";
-        } else {
-            // Edge server proxies from origin
-            $protocol = $this->port === 443 ? 'https' : 'http';
-            $port = in_array($this->port, [80, 443]) ? '' : ':' . $this->port;
-            return "{$protocol}://{$this->hostname}{$port}";
-        }
+        $protocol = $this->port === 443 ? 'https' : 'http';
+        $port = in_array($this->port, [80, 443]) ? '' : ':' . $this->port;
+        return "{$protocol}://{$this->hostname}{$port}";
     }
 
     /**
      * Get the full HLS path for a stream
      */
-    public function getHlsUrl(string $streamSlug, string $quality = 'fhd'): string
+    public function getOmeUrl(string $streamSlug, string $protocol = 'hls', string $quality = 'fhd'): string
     {
-        $baseUrl = $this->getHlsBaseUrl();
-        
-        if ($this->type === ServerTypeEnum::ORIGIN) {
-            // Origin server path structure from SRS
-            $hlsPath = $this->hls_path ?: '/live';
-            return "{$baseUrl}{$hlsPath}/{$streamSlug}_{$quality}/index.m3u8";
-        } else {
-            // Edge server proxies the same path
-            return "{$baseUrl}/live/{$streamSlug}_{$quality}/index.m3u8";
+        $baseUrl = $this->getOmeBaseUrl();
+        switch ($protocol) {
+            case 'hls':
+                return "{$baseUrl}/hls/{$streamSlug}_{$quality}/index.m3u8";
+            case 'dash':
+                return "{$baseUrl}/dash/{$streamSlug}_{$quality}/index.mpd";
+            case 'llhls':
+                return "{$baseUrl}/llhls/{$streamSlug}_{$quality}/index.m3u8";
+            case 'lldash':
+                return "{$baseUrl}/lldash/{$streamSlug}_{$quality}/index.mpd";
+            default:
+                return "{$baseUrl}/hls/{$streamSlug}_{$quality}/index.m3u8";
         }
     }
 

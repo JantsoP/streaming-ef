@@ -214,15 +214,14 @@ class Show extends Model
     }
 
     /**
-     * Get the RTMP push URL for this show.
+     * Get the OME push URL for this show.
      */
-    public function getRtmpUrl()
+    public function getOmeUrl()
     {
         if ($this->server) {
-            return "rtmp://{$this->server->hostname}/live/{$this->source->stream_key}";
+            return "rtmp://{$this->server->hostname}:1935/app/{$this->source->stream_key}";
         }
-
-        return $this->source->rtmp_url;
+        return $this->source ? $this->source->getOmePushUrl() : null;
     }
 
     /**

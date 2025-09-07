@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Server>
+  <RTMP>
+    <Port>1935</Port>
+  </RTMP>
+  <SRT>
+    <Port>3333</Port>
+  </SRT>
+  <WebRTC>
+    <SignalingPort>8080</SignalingPort>
+  </WebRTC>
+  <HLS>
+    <Port>8000</Port>
+    <LowLatencyPort>8082</LowLatencyPort>
+  </HLS>
+  <DASH>
+    <Port>8081</Port>
+    <LowLatencyPort>8083</LowLatencyPort>
+  </DASH>
+  <API>
+    <Port>9000</Port>
+  </API>
+  <DVR>
+    <Enable>true</Enable>
+    <StoragePath>/dvr/recordings</StoragePath>
+    <SegmentDuration>10</SegmentDuration>
+    <MaxStorageSize>100000</MaxStorageSize>
+  </DVR>
+</Server>

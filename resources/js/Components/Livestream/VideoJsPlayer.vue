@@ -375,12 +375,9 @@ player = videojs(videoPlayer.value, options);
             player.hotkeys({
                 volumeStep: 0.1,
                 seekStep: 5,
-                enableModifiersForNumbers: false,
                 enableMute: true,
-                enableVolumeScroll: false, // Disable for better mobile support
-                enableHoverScroll: false,
                 enableFullscreen: true,
-                enableNumbers: false, // Disable for live streams
+                enableNumbers: false,
                 alwaysCaptureHotkeys: true,
                 captureDocumentHotkeys: false,
                 documentHotkeysFocusElementFilter: (e) => {
@@ -388,72 +385,62 @@ player = videojs(videoPlayer.value, options);
                     return tagName !== 'input' && tagName !== 'textarea';
                 },
                 customKeys: {
-                    // Play/Pause with space or K
                     playPauseKey: {
-                        key: function(event) {
-                            return (event.which === 32 || event.which === 75);
-                        },
-                        handler: function(player, options, event) {
+                        key: (event) => event.code === 'Space' || event.code === 'KeyK',
+                        handler: (player, options, event) => {
                             event.preventDefault();
-                            if (player.paused()) {
-                                player.play();
-                            } else {
-                                player.pause();
-                            }
+                            player.paused() ? player.play() : player.pause();
                         }
                     },
-                    // Volume up with up arrow
                     volumeUpKey: {
-                        key: function(event) {
-                            return event.which === 38;
-                        },
-                        handler: function(player, options) {
+                        key: (event) => event.code === 'ArrowUp',
+                        handler: (player, options) => {
                             player.volume(Math.min(1, player.volume() + options.volumeStep));
                         }
                     },
-                    // Volume down with down arrow
                     volumeDownKey: {
-                        key: function(event) {
-                            return event.which === 40;
-                        },
-                        handler: function(player, options) {
+                        key: (event) => event.code === 'ArrowDown',
+                        handler: (player, options) => {
                             player.volume(Math.max(0, player.volume() - options.volumeStep));
                         }
                     },
-                    // Mute with M
-                    muteKey: {
-                        key: function(event) {
-                            return event.which === 77;
-                        },
-                        handler: function(player) {
-                            player.muted(!player.muted());
-                        }
-                    },
-                    // Fullscreen with F
-                    fullscreenKey: {
-                        key: function(event) {
-                            return event.which === 70;
-                        },
-                        handler: function(player) {
-                            if (player.isFullscreen()) {
-                                player.exitFullscreen();
-                            } else {
-                                player.requestFullscreen();
+                    seekForwardKey: {
+                        key: (event) => event.code === 'ArrowRight',
+                        handler: (player, options) => {
+                            if (!props.isLive) {
+                                player.currentTime(player.currentTime() + options.seekStep);
                             }
                         }
                     },
-                    // Stats overlay with I
+                    seekBackwardKey: {
+                        key: (event) => event.code === 'ArrowLeft',
+                        handler: (player, options) => {
+                            if (!props.isLive) {
+                                player.currentTime(Math.max(0, player.currentTime() - options.seekStep));
+                            }
+                        }
+                    },
+                    muteKey: {
+                        key: (event) => event.code === 'KeyM',
+                        handler: (player) => {
+                            player.muted(!player.muted());
+                        }
+                    },
+                    fullscreenKey: {
+                        key: (event) => event.code === 'KeyF',
+                        handler: (player) => {
+                            player.isFullscreen() ? player.exitFullscreen() : player.requestFullscreen();
+                        }
+                    },
                     statsKey: {
-                        key: function(event) {
-                            return event.which === 73;
-                        },
-                        handler: function() {
+                        key: (event) => event.code === 'KeyI',
+                        handler: () => {
                             emit('toggleStats');
                         }
                     }
                 }
             });
-            console.log('Hotkeys plugin initialized');
+            console.log('Hotkeys plugin initialized (latest API)');
         } else {
             console.warn('Hotkeys plugin not available');
         }

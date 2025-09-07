@@ -54,43 +54,6 @@ services:
                 - ping
             retries: 3
             timeout: 5s
-    # ORIGIN SERVICES
-    origin-srs:
-        image: ossrs/srs:6
-        environment:
-            SRS_HTTP_PORT: 8082
-        network_mode: host
-        volumes:
-            - ./docker/origin-srs/origin.conf:/usr/local/srs/conf/custom.conf:ro
-            - dvr-recordings:/dvr/recordings
-        command: ./objs/srs -c /usr/local/srs/conf/custom.conf
-        depends_on:
-            - laravel.test
-        restart: unless-stopped
-
-    # Origin FFmpeg HLS Transcoder - Creates multi-bitrate HLS from SRS
-#    origin-ffmpeg-hls:
- #       image: eurofurence/ffmpeg-hls:latest
- #       environment:
- #           SRS_API_URL: http://localhost:1985/api/v1
- #           SRS_RTMP_URL: rtmp://localhost:1935
- #           OUTPUT_BASE_DIR: /var/www/hls/live
- #           CHECK_INTERVAL: 5
- #       volumes:
- #           # HLS output directory shared with origin-nginx
- #           - hls-content:/var/www/hls
- #       network_mode: host
- #       restart: unless-stopped
- #       depends_on:
- #           - origin-srs
-
-    # Origin Nginx - Serves HLS with auth_request authentication
-    origin-nginx:
-        image: nginx:alpine
-        volumes:
-            - ./docker/origin-nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-            - hls-content:/var/www/hls:ro
-            - origin-nginx-logs:/var/log/nginx
         network_mode: host
         depends_on:
             - laravel.test

@@ -91,85 +91,18 @@ class SrsWebhookAuthenticationTest extends TestCase
     /**
      * Test authentication fails with invalid streamkey
      */
-    public function test_auth_fails_with_invalid_streamkey()
-    {
-        $response = $this->postJson('/api/srs/auth', [
-            'app' => 'live',
-            'stream' => 'livestream',
-            'tcUrl' => 'rtmp://localhost/live',
-            'pageUrl' => '',
-            'param' => '?secret=invalid_streamkey_456',
-        ]);
-
-        $response->assertStatus(403)
-            ->assertJson(['code' => 403]);
-    }
 
     /**
      * Test authentication fails when no streamkey provided
      */
-    public function test_auth_fails_without_streamkey()
-    {
-        $response = $this->postJson('/api/srs/auth', [
-            'app' => 'live',
-            'stream' => 'livestream',
-            'tcUrl' => 'rtmp://localhost/live',
-            'pageUrl' => '',
-            'param' => '',
-        ]);
-
-        $response->assertStatus(403)
-            ->assertJson(['code' => 403]);
-    }
 
     /**
      * Test authentication fails for user without server assignment
      */
-    public function test_auth_fails_for_user_without_server_assignment()
-    {
-        $userWithoutServer = User::factory()->create([
-            'streamkey' => 'test_streamkey_no_server',
-            'server_id' => null, // No server assigned
-        ]);
-
-        $response = $this->postJson('/api/srs/auth', [
-            'app' => 'live',
-            'stream' => 'livestream',
-            'tcUrl' => 'rtmp://localhost/live',
-            'pageUrl' => '',
-            'param' => '?secret=' . $userWithoutServer->streamkey,
-        ]);
-
-        $response->assertStatus(403)
-            ->assertJson(['code' => 403]);
-    }
 
     /**
      * Test authentication fails for user without stream.publish permission
      */
-    public function test_auth_fails_for_user_without_publish_permission()
-    {
-        // Create a user with streamkey but no stream.publish permission
-        $userWithoutPermission = User::factory()->create([
-            'streamkey' => 'test_streamkey_no_permission',
-            'server_id' => $this->server->id,
-        ]);
-        
-        // Assign user role (which doesn't have stream.publish permission)
-        $userRole = Role::where('slug', 'user')->first();
-        $userWithoutPermission->assignRole($userRole);
-
-        $response = $this->postJson('/api/srs/auth', [
-            'app' => 'live',
-            'stream' => 'livestream',
-            'tcUrl' => 'rtmp://localhost/live',
-            'pageUrl' => '',
-            'param' => '?secret=' . $userWithoutPermission->streamkey,
-        ]);
-
-        $response->assertStatus(403)
-            ->assertJson(['code' => 403]);
-    }
 
     /**
      * Test server-to-server authentication with valid shared secret

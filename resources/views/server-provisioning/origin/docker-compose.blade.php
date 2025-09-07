@@ -1,23 +1,6 @@
 version: '3.8'
 
 services:
-  # Origin SRS - RTMP ingestion
-  origin-srs:
-    image: ossrs/srs:6
-    container_name: origin-srs
-    ports:
-      - "1935:1935"  # RTMP
-      - "1985:1985"  # SRS API
-      - "8082:8082"  # SRS HTTP
-    environment:
-      SRS_HTTP_PORT: 8082
-    volumes:
-      - ./srs.conf:/usr/local/srs/conf/custom.conf:ro
-      - dvr-recordings:/dvr/recordings
-    command: ./objs/srs -c /usr/local/srs/conf/custom.conf
-    restart: unless-stopped
-    networks:
-      - streaming
 
   # Origin FFmpeg HLS Transcoder
   origin-ffmpeg-hls:

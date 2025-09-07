@@ -140,35 +140,33 @@ class Source extends Model
     }
 
     /**
-     * Get the base RTMP server URL for OBS configuration.
-     * Returns URL in format: rtmp://server:port/ingress
+     * Get the base OME server URL for OBS configuration.
+     * Returns URL in format: rtmp://server:port/app
      */
-    public function getRtmpServerUrl()
+    public function getOmeServerUrl()
     {
-        // Get the active origin server
         $originServer = \App\Models\Server::where('type', \App\Enum\ServerTypeEnum::ORIGIN)
             ->where('status', \App\Enum\ServerStatusEnum::ACTIVE)
             ->first();
-
-        return "rtmp://{$originServer->hostname}:1935/ingress";
+        return "rtmp://{$originServer->hostname}:1935/app";
     }
 
     /**
-     * Get the stream key for OBS configuration.
-     * Returns: <slug>?secret=<stream_key>STr
+     * Get the stream key for OBS configuration (OME).
+     * Returns: <slug>?key=<stream_key>
      */
     public function getObsStreamKey()
     {
-        return $this->slug.'?secret='.$this->stream_key;
+        return $this->slug.'?key='.$this->stream_key;
     }
 
     /**
-     * Get the full RTMP push URL (for reference/testing).
-     * Returns URL in format: rtmp://server:port/ingress/<slug>?secret=<stream_key>
+     * Get the full OME push URL (for reference/testing).
+     * Returns URL in format: rtmp://server:port/app/<slug>?key=<stream_key>
      */
-    public function getRtmpPushUrl()
+    public function getOmePushUrl()
     {
-        return $this->getRtmpServerUrl().'/'.$this->slug.'?secret='.$this->stream_key;
+        return $this->getOmeServerUrl().'/'.$this->slug.'?key='.$this->stream_key;
     }
 
     /**

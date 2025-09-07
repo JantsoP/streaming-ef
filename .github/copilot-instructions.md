@@ -5,13 +5,13 @@
 - **Frontend**: Vue 3 + Inertia.js 2
 - **Admin Panel**: Filament 3
 - **Real-time**: Pusher/Soketi (WebSockets)
-- **Streaming**: SRS (RTMP/FLV)
+-- **Streaming**: OME (RTMP/SRT/HLS/DASH/LL-HLS/LL-DASH)
 - **Queue**: Laravel Horizon + Redis
 - **Database**: MySQL 8.0
 - **Infrastructure**: Hetzner Cloud API for server provisioning
 
 ## Key Components
-- **Streaming**: SRS origin/edge servers, auto-provisioned via Hetzner
+-- **Streaming**: OME origin/edge servers, auto-provisioned via Hetzner
 - **Models**: `User` (OpenID), `Server`, `Client`, `Message` (chat/moderation)
 - **Real-time**: WebSocket for chat/events, stream status, chat rate limiting
 - **Auto-scaling**: `AutoscalerService` + jobs for server lifecycle
