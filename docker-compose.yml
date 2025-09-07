@@ -115,6 +115,21 @@ services:
             - caddy-logs:/var/log/caddy
         network_mode: host
         restart: unless-stopped
+
+    # OME - OvenMediaEngine streaming server
+    ome:
+        image: airensoft/ovenmediaengine:latest
+        container_name: ome
+        ports:
+            - "1935:1935"   # RTMP
+            - "3333:3333"   # SRT
+            - "8000:8000"   # HLS
+            - "8081:8081"   # DASH
+            - "9000:9000"   # OME API
+        volumes:
+            - ./docker/ome/Server.xml:/opt/ovenmediaengine/bin/origin_conf/Server.xml:ro
+        network_mode: host
+        restart: unless-stopped
 volumes:
     sail-mysql:
         driver: local
