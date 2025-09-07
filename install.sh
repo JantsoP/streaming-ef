@@ -106,6 +106,7 @@ networks:
 volumes:
   caddy-data:
   caddy-config:
+DOCKERCOMPOSE
 
 # Create Edge Nginx configuration
 cat > nginx.conf <<'NGINXCONF'
@@ -281,13 +282,16 @@ http {
             return 404;
         }
     }
-}NGINXCONF
+}
+NGINXCONF
 
 # Create Edge Caddy configuration
 cat > Caddyfile <<'CADDYFILE'
 edge-10-Ur16YGLgHK2J.stream.eurofurence.org {
     reverse_proxy edge-nginx:80
-}CADDYFILE
+}
+CADDYFILE
+
 # Start services
 echo "Starting Docker services..."
 docker compose up -d
