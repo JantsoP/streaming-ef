@@ -83,22 +83,6 @@ services:
     networks:
       - streaming
 
-  # OME - OvenMediaEngine streaming server
-  ome:
-    image: airensoft/ovenmediaengine:latest
-    container_name: ome
-    ports:
-      - "1935:1935"   # RTMP
-      - "3333:3333"   # SRT
-      - "8000:8000"   # HLS
-      - "8081:8081"   # DASH
-      - "9000:9000"   # OME API
-    volumes:
-      - ./ome-config:/opt/ovenmediaengine/bin/origin_conf:ro
-    restart: unless-stopped
-    networks:
-      - streaming
-
 networks:
   streaming:
     driver: bridge
@@ -301,19 +285,11 @@ echo "Waiting for services to start..."
 WAITED=0
 MAX_WAIT=60
 while [ $WAITED -lt $MAX_WAIT ]; do
-    if [ "edge" = "origin" ]; then
-        # For origin, check if SRS is responding
-        if curl -s http://localhost:1985/api/v1/versions > /dev/null 2>&1; then
-            echo "Origin services are ready!"
-            break
-        fi
-    else
-        # For edge, check if nginx is responding
-        if curl -s http://localhost:8081/health > /dev/null 2>&1; then
-            echo "Edge services are ready!"
-            break
-        fi
-    fi
+  # For edge, check if nginx is responding
+  if curl -s http://localhost:8081/health > /dev/null 2>&1; then
+    echo "Edge services are ready!"
+    break
+  fi
     echo "Waiting for services... ($WAITED/$MAX_WAIT seconds)"
     sleep 5
     WAITED=$((WAITED + 5))
