@@ -72,6 +72,7 @@ services:
         image: ossrs/srs:6
         ports:
             - '${FORWARD_SRS_RTMP_PORT:-1935}:1935'
+            - '${FORWARD_SRS_SRT_PORT:-10080}:10080/udp'
             - '${FORWARD_SRS_HTTP_PORT:-8082}:8082'
             - '${FORWARD_SRS_API_PORT:-1985}:1985'
         environment:

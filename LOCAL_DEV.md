@@ -212,15 +212,21 @@ The login page shows a yellow **"Dev Admin Login (no OIDC)"** button at the bott
 
 ## 9. Stream from OBS
 
-In OBS:
+Both RTMP and SRT are active simultaneously — OBS operators can use either.
 
-- **Settings → Stream**
-  - Service: `Custom`
-  - Server: `rtmp://localhost:1935/live`
-  - Stream Key: _(from step 4 above)_
-- Click **Start Streaming**
+**RTMP (simplest, any OBS version):**
+- Settings → Stream → Service: `Custom`
+- Server: `rtmp://localhost:1935/live`
+- Stream Key: _(from step 4 above)_
 
-The FFmpeg transcoder (`origin-ffmpeg-hls`) will detect the RTMP stream and produce multi-bitrate HLS automatically.
+**SRT (lower latency, more robust on WiFi):**
+- Settings → Stream → Service: `Custom`
+- Server: `srt://localhost:10080`
+- Stream Key: `#!::r=live/<your-stream-key>,m=publish`
+
+SRT reduces ingest latency from ~2–4 s to ~120 ms and recovers silently from packet loss that would stutter or drop an RTMP stream. On a reliable wired connection the difference is invisible; on venue WiFi it's meaningful.
+
+Click **Start Streaming**. The FFmpeg transcoder (`origin-ffmpeg-hls`) will detect the RTMP stream (SRS bridges SRT → RTMP internally) and produce multi-bitrate HLS automatically.
 
 ---
 
@@ -343,7 +349,8 @@ sail -f docker-compose.local.yml down -v
 | MySQL | 3306 | Database |
 | Redis | 6379 | Cache / queues |
 | Soketi | 6001 | WebSockets |
-| SRS RTMP | 1935 | OBS stream input |
+| SRS RTMP | 1935 | OBS stream input (TCP) |
+| SRS SRT | 10080/udp | OBS stream input — lower latency, packet-loss tolerant |
 | SRS HTTP | 8082 | SRS internal API |
 | SRS API | 1985 | SRS management API |
 | Origin Nginx | 8083 | Internal HLS auth |
@@ -363,6 +370,11 @@ Confirm `APP_ENV=local` in `.env` and rebuild the config cache: `sail artisan co
 **No HLS segments after streaming:**  
 Check FFmpeg transcoder logs: `sail logs -f origin-ffmpeg-hls`  
 Confirm SRS is receiving the stream: `curl http://localhost:1985/api/v1/streams/`
+
+**SRT stream not connecting:**  
+SRT uses UDP, which is blocked by some firewalls/VPNs. Confirm port 10080/udp is reachable.  
+Check SRS logs for the stream ID: `sail logs -f origin-srs | grep srt`  
+OBS stream key must be exactly `#!::r=live/<stream-key>,m=publish` — the `m=publish` is required.
 
 **DVR segments not appearing in MinIO:**  
 These are the raw SRS `.mp4` backup segments (not used for VOD anymore but still uploaded).  
