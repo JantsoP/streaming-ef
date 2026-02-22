@@ -188,8 +188,8 @@ const initializePlayer = async () => {
         playsinline: true, // Important for mobile
         liveui: props.isLive,
         liveTracker: {
-            trackingThreshold: 30,  // Allow 30 seconds behind before considering "not live"
-            liveTolerance: 15,      // 15 seconds from edge is considered "at live"
+            trackingThreshold: 8,   // 8 seconds behind = not considered "live"
+            liveTolerance: 4,       // 4 seconds from edge is considered "at live"
             pauseTracking: false    // Don't pause tracking when seeking
         },
         html5: {
@@ -219,12 +219,12 @@ const initializePlayer = async () => {
                 abrEwmaSlowVoD: 15.0,
                 abrBandwidthEstimator: 0.5, // More conservative bandwidth estimation
                 abrEwmaDefaultEstimate: 4194304, // 4 Mbps default
-                // Buffer settings for stability
+                // Buffer settings - tuned for low latency live streaming
                 bufferBasedABR: false, // Disable buffer-based ABR
                 experimentalExactManifestTimings: true,
-                maxGoalBufferLength: 60, // Increase buffer for stability
-                goalBufferLength: 30, // Try to maintain 30 seconds
-                maxBufferLength: 60,
+                maxGoalBufferLength: 12, // Max 12 seconds ahead
+                goalBufferLength: 8,    // Target 8 seconds ahead
+                maxBufferLength: 15,    // Absolute ceiling
                 bufferPruneAhead: 1,
                 renditionMixin: {
                     excludeUntil: Infinity // Don't exclude renditions permanently

@@ -17,6 +17,11 @@ use App\Listeners\HandleAutoModeShowsListener;
 use App\Listeners\SaveListenerCountListener;
 use App\Listeners\SetCacheStatusListener;
 use App\Listeners\StreamScalingListener;
+use App\Events\ShowEnded;
+use App\Events\ShowWentLive;
+use App\Listeners\CreateVodOnShowEndedListener;
+use App\Listeners\StartShowArchiveListener;
+use App\Listeners\StopShowArchiveListener;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -52,6 +57,13 @@ class EventServiceProvider extends ServiceProvider
         ],
         SourceStatusChangedEvent::class => [
             HandleAutoModeShowsListener::class,
+        ],
+        ShowWentLive::class => [
+            StartShowArchiveListener::class,
+        ],
+        ShowEnded::class => [
+            StopShowArchiveListener::class,
+            CreateVodOnShowEndedListener::class,
         ],
     ];
 

@@ -70,6 +70,36 @@ class EditShow extends EditRecord
                             ->send();
                     }
                 }),
+            Actions\Action::make('pause_vod_recording')
+                ->label('Pause VOD Recording')
+                ->icon('heroicon-o-pause')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Pause VOD Recording')
+                ->modalDescription('Archive recording will be paused. Existing segments are preserved and recording will resume seamlessly when you continue. Use this during intermissions.')
+                ->modalSubmitActionLabel('Pause Recording')
+                ->visible(fn () => $this->record->status === 'live' && ! $this->record->vod_paused && $this->record->recordable)
+                ->action(function () {
+                    $this->record->pauseVodRecording();
+                    Notification::make()
+                        ->title('VOD recording paused')
+                        ->body("Recording paused for '{$this->record->title}'. Intermission will not be included in VOD.")
+                        ->warning()
+                        ->send();
+                }),
+            Actions\Action::make('resume_vod_recording')
+                ->label('Continue VOD Recording')
+                ->icon('heroicon-o-play')
+                ->color('success')
+                ->visible(fn () => $this->record->status === 'live' && $this->record->vod_paused && $this->record->recordable)
+                ->action(function () {
+                    $this->record->resumeVodRecording();
+                    Notification::make()
+                        ->title('VOD recording resumed')
+                        ->body("Recording resumed for '{$this->record->title}'.")
+                        ->success()
+                        ->send();
+                }),
             Actions\DeleteAction::make(),
         ];
     }

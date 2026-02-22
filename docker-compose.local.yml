@@ -1,3 +1,17 @@
+# =============================================================================
+# LOCAL DEVELOPMENT COMPOSE FILE
+# =============================================================================
+# Use this file for local development — NOT for production.
+#
+#   sail -f docker-compose.local.yml up -d
+#
+# Or set it permanently in your shell:
+#   export COMPOSE_FILE=docker-compose.local.yml
+#   sail up -d
+#
+# See LOCAL_DEV.md for a full step-by-step guide.
+# =============================================================================
+
 services:
     laravel.test:
         build:
@@ -17,16 +31,17 @@ services:
             XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
             XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
-            # SUPERVISOR_PHP_COMMAND: "/usr/bin/php -d variables_order=EGPCS /var/www/html/artisan serve --host=0.0.0.0 --port=80"
         volumes:
             - '.:/var/www/html'
-            # Shared with origin-ffmpeg-hls: the VOD job reads archive segments to upload to S3
+            # Shared with origin-ffmpeg-hls so the VOD job can read archive segments
             - hls-content:/var/www/hls
         networks:
             - sail
         depends_on:
             - mysql
             - redis
+            - minio
+
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:
@@ -51,6 +66,7 @@ services:
                 - '-p${DB_PASSWORD}'
             retries: 3
             timeout: 5s
+
     redis:
         image: 'redis:alpine'
         ports:
@@ -60,14 +76,48 @@ services:
         networks:
             - sail
         healthcheck:
-
             test:
                 - CMD
                 - redis-cli
                 - ping
             retries: 3
             timeout: 5s
-    # ORIGIN SERVICES
+
+    soketi:
+        image: 'quay.io/soketi/soketi:latest-16-alpine'
+        ports:
+            - '${SOKETI_PORT:-6001}:6001'
+            - '${SOKETI_METRICS_SERVER_PORT:-9601}:9601'
+        environment:
+            SOKETI_DEBUG: '${SOKETI_DEBUG:-0}'
+            SOKETI_METRICS_SERVER_PORT: '9601'
+            SOKETI_DEFAULT_APP_ID: '${PUSHER_APP_ID}'
+            SOKETI_DEFAULT_APP_KEY: '${PUSHER_APP_KEY}'
+            SOKETI_DEFAULT_APP_SECRET: '${PUSHER_APP_SECRET}'
+        networks:
+            - sail
+
+    # Local S3-compatible object storage — replaces real S3/Hetzner for DVR testing
+    minio:
+        image: 'minio/minio:latest'
+        ports:
+            - '${FORWARD_MINIO_PORT:-9000}:9000'       # S3 API
+            - '${FORWARD_MINIO_CONSOLE_PORT:-9001}:9001' # Web console
+        environment:
+            MINIO_ROOT_USER:     '${DVR_AWS_ACCESS_KEY_ID:-minio}'
+            MINIO_ROOT_PASSWORD: '${DVR_AWS_SECRET_ACCESS_KEY:-minio123}'
+        volumes:
+            - 'minio-data:/data'
+        networks:
+            - sail
+        command: 'server /data --console-address ":9001"'
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+            interval: 10s
+            retries: 3
+            timeout: 5s
+
+    # SRS Origin — RTMP ingest + DVR recording
     origin-srs:
         image: ossrs/srs:6
         ports:
@@ -86,23 +136,28 @@ services:
             - laravel.test
         restart: unless-stopped
 
-    # Origin FFmpeg HLS Transcoder - Creates multi-bitrate HLS from SRS
-#    origin-ffmpeg-hls:
- #       image: eurofurence/ffmpeg-hls:latest
- #       environment:
- #           SRS_API_URL: http://localhost:1985/api/v1
- #           SRS_RTMP_URL: rtmp://localhost:1935
- #           OUTPUT_BASE_DIR: /var/www/hls/live
- #           CHECK_INTERVAL: 5
- #       volumes:
- #           # HLS output directory shared with origin-nginx
- #           - hls-content:/var/www/hls
- #       network_mode: host
- #       restart: unless-stopped
- #       depends_on:
- #           - origin-srs
+    # FFmpeg HLS transcoder — converts RTMP → multi-bitrate HLS
+    origin-ffmpeg-hls:
+        build:
+            context: ./docker/ffmpeg-hls
+            dockerfile: Dockerfile
+        environment:
+            SRS_API_URL:     'http://origin-srs:1985/api/v1'
+            SRS_RTMP_URL:    'rtmp://origin-srs:1935'
+            OUTPUT_BASE_DIR: /var/www/hls/live
+            ARCHIVE_BASE_DIR: /var/www/hls/archive
+            ARCHIVE_FLAGS_DIR: /var/www/hls/archive-flags
+            ARCHIVE_PAUSE_DIR: /var/www/hls/archive-pause
+            CHECK_INTERVAL:  5
+        volumes:
+            - hls-content:/var/www/hls
+        networks:
+            - sail
+        depends_on:
+            - origin-srs
+        restart: unless-stopped
 
-    # Origin Nginx - Serves HLS with auth_request authentication
+    # Origin Nginx — serves HLS with auth_request
     origin-nginx:
         image: nginx:alpine
         ports:
@@ -122,14 +177,14 @@ services:
             retries: 3
         restart: unless-stopped
 
-    # Origin Caddy - SSL termination for origin (port 8070 for local, 8080 in production)
+    # Origin Caddy — HTTP(S) front for HLS origin
     origin-caddy:
         image: caddy:alpine
         ports:
             - '${FORWARD_ORIGIN_CADDY_PORT:-8070}:8070'
         environment:
-            DOMAIN: '${APP_URL:-localhost}'
-            CADDY_PORT: 8070
+            DOMAIN:            '${APP_URL:-localhost}'
+            CADDY_PORT:        8070
             NGINX_ORIGIN_PORT: 8083
         volumes:
             - ./docker/origin-caddy/Caddyfile:/etc/caddy/Caddyfile:ro
@@ -142,21 +197,23 @@ services:
             - origin-nginx
         restart: unless-stopped
 
-    # DVR S3 Uploader Service
+    # DVR uploader — watches /dvr/recordings and uploads SRS .mp4 segments to MinIO
     dvr-uploader:
-        image: eurofurence/dvr-uploader:latest
+        build:
+            context: ./docker/dvr-uploader
+            dockerfile: Dockerfile
         environment:
-            S3_BUCKET: '${DVR_AWS_BUCKET:-ef-streaming-recordings}'
-            S3_REGION: '${DVR_AWS_DEFAULT_REGION:-eu-central-1}'
-            S3_ACCESS_KEY: '${DVR_AWS_ACCESS_KEY_ID}'
-            S3_SECRET_KEY: '${DVR_AWS_SECRET_ACCESS_KEY}'
-            S3_ENDPOINT: '${DVR_AWS_ENDPOINT}'
-            RECORDINGS_PATH: /dvr/recordings
-            DELETE_AFTER_UPLOAD: 'true'
-            WEBHOOK_URL: 'http://laravel.test/api/dvr/upload-webhook'
-            FILE_AGE_SECONDS: '30'
+            S3_BUCKET:            '${DVR_AWS_BUCKET:-recording}'
+            S3_REGION:            '${DVR_AWS_DEFAULT_REGION:-us-east-1}'
+            S3_ACCESS_KEY:        '${DVR_AWS_ACCESS_KEY_ID:-minio}'
+            S3_SECRET_KEY:        '${DVR_AWS_SECRET_ACCESS_KEY:-minio123}'
+            S3_ENDPOINT:          '${DVR_AWS_ENDPOINT:-http://minio:9000}'
+            RECORDINGS_PATH:      /dvr/recordings
+            DELETE_AFTER_UPLOAD:  'false'   # keep segments locally for easier debugging
+            WEBHOOK_URL:          'http://laravel.test/api/dvr/upload-webhook'
+            FILE_AGE_SECONDS:     '30'
             UPLOAD_DELAY_SECONDS: '5'
-            MAX_UPLOAD_RATE_MBPS: '3'
+            MAX_UPLOAD_RATE_MBPS: '50'      # no real network throttle needed locally
         volumes:
             - dvr-recordings:/dvr/recordings
         networks:
@@ -164,10 +221,10 @@ services:
         depends_on:
             - origin-srs
             - laravel.test
+            - minio
         restart: unless-stopped
 
-    # EDGE SERVICES
-    # Edge Nginx - Proxies and caches content from origin Caddy
+    # Edge Nginx — caches and proxies HLS from Origin Caddy
     edge-nginx:
         image: nginx:alpine
         ports:
@@ -188,14 +245,14 @@ services:
             retries: 3
         restart: unless-stopped
 
-    # Edge Caddy - SSL termination for edge server
+    # Edge Caddy — SSL/HTTP front for edge HLS delivery (port 8085 = player default)
     edge-caddy:
         image: caddy:alpine
         ports:
-            - '${FORWARD_EDGE_CADDY_PORT:-8080}:8080'
+            - '${FORWARD_EDGE_CADDY_PORT:-8085}:8085'
         environment:
-            DOMAIN: '${APP_URL:-localhost}'
-            CADDY_PORT: 8080
+            DOMAIN:          '${APP_URL:-localhost}'
+            CADDY_PORT:      8085
             NGINX_EDGE_PORT: 8081
         volumes:
             - ./docker/edge-caddy/Caddyfile:/etc/caddy/Caddyfile:ro
@@ -205,36 +262,23 @@ services:
         networks:
             - sail
         restart: unless-stopped
+
 volumes:
-    sail-mysql:
-        driver: local
-    sail-redis:
-        driver: local
-    # Origin volumes
-    hls-content:
-        driver: local
-    origin-nginx-logs:
-        driver: local
-    origin-caddy-data:
-        driver: local
-    origin-caddy-config:
-        driver: local
-    origin-caddy-logs:
-        driver: local
-    # DVR volumes
-    dvr-recordings:
-        driver: local
-    # Edge volumes
-    edge-nginx-logs:
-        driver: local
-    edge-nginx-cache:
-        driver: local
-    caddy-data:
-        driver: local
-    caddy-config:
-        driver: local
-    caddy-logs:
-        driver: local
+    sail-mysql:       { driver: local }
+    sail-redis:       { driver: local }
+    minio-data:       { driver: local }
+    hls-content:      { driver: local }
+    dvr-recordings:   { driver: local }
+    origin-nginx-logs: { driver: local }
+    origin-caddy-data: { driver: local }
+    origin-caddy-config: { driver: local }
+    origin-caddy-logs: { driver: local }
+    edge-nginx-logs:  { driver: local }
+    edge-nginx-cache: { driver: local }
+    caddy-data:       { driver: local }
+    caddy-config:     { driver: local }
+    caddy-logs:       { driver: local }
+
 networks:
     sail:
         driver: bridge

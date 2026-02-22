@@ -24,6 +24,7 @@ class Show extends Model
         'status',
         'auto_mode',
         'recordable',
+        'vod_paused',
         'thumbnail_path',
         'thumbnail_updated_at',
         'thumbnail_capture_error',
@@ -44,6 +45,7 @@ class Show extends Model
         'thumbnail_updated_at' => 'datetime',
         'auto_mode' => 'boolean',
         'recordable' => 'boolean',
+        'vod_paused' => 'boolean',
         'tags' => 'array',
         'metadata' => 'array',
         'required_roles' => 'array',
@@ -156,8 +158,9 @@ class Show extends Model
     public function endLivestream()
     {
         $this->update([
-            'status' => 'ended',
+            'status'     => 'ended',
             'actual_end' => now(),
+            'vod_paused' => false,
         ]);
 
         // Mark all active viewers as left in the source
@@ -165,10 +168,62 @@ class Show extends Model
             $this->source->activeViewers()->update([
                 'left_at' => now(),
             ]);
+
+            // Clean up any stale pause flag so it doesn't linger on disk
+            $pauseFile = config('stream.vod.archive_pause_dir', '/var/www/hls/archive-pause')
+                .'/'.$this->source->slug;
+            if (file_exists($pauseFile)) {
+                unlink($pauseFile);
+            }
         }
 
         // Dispatch event for notifications
         event(new \App\Events\ShowEnded($this));
+    }
+
+    /**
+     * Pause VOD recording (e.g. during an intermission).
+     * Creates a pause flag file so stream-manager.sh stops the archive FFmpeg.
+     * Segments already written are preserved; recording resumes seamlessly on unpause.
+     */
+    public function pauseVodRecording(): void
+    {
+        $this->update(['vod_paused' => true]);
+
+        if ($this->source) {
+            $pauseDir = config('stream.vod.archive_pause_dir', '/var/www/hls/archive-pause');
+            \Illuminate\Support\Facades\File::ensureDirectoryExists($pauseDir);
+            touch("{$pauseDir}/{$this->source->slug}");
+
+            \Illuminate\Support\Facades\Log::info('Show VOD recording paused.', [
+                'show_id' => $this->id,
+                'source'  => $this->source->slug,
+            ]);
+        }
+    }
+
+    /**
+     * Resume VOD recording after a pause.
+     * Removes the pause flag file so stream-manager.sh restarts archive FFmpeg,
+     * appending new segments to the existing archive (no segments lost).
+     */
+    public function resumeVodRecording(): void
+    {
+        $this->update(['vod_paused' => false]);
+
+        if ($this->source) {
+            $pauseFile = config('stream.vod.archive_pause_dir', '/var/www/hls/archive-pause')
+                .'/'.$this->source->slug;
+
+            if (file_exists($pauseFile)) {
+                unlink($pauseFile);
+            }
+
+            \Illuminate\Support\Facades\Log::info('Show VOD recording resumed.', [
+                'show_id' => $this->id,
+                'source'  => $this->source->slug,
+            ]);
+        }
     }
 
     /**

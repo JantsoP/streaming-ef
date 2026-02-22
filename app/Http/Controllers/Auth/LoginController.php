@@ -9,6 +9,8 @@ class LoginController extends Controller
 {
     public function __invoke()
     {
-        return Inertia::render('Auth/Login');
+        return Inertia::render('Auth/Login', [
+            'isLocal' => app()->isLocal(),
+        ]);
     }
 }

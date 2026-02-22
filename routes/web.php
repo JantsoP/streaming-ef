@@ -26,6 +26,11 @@ Route::middleware('guest')->group(function () {
         'callback',
     ])->name('auth.callback');
     Route::get('/login', \App\Http\Controllers\Auth\LoginController::class)->name('login');
+
+    // Local development only — instant admin login without OIDC
+    if (app()->isLocal()) {
+        Route::get('/dev/login', \App\Http\Controllers\Auth\LocalDevLoginController::class)->name('dev.login');
+    }
 });
 
 // Test route for chat commands

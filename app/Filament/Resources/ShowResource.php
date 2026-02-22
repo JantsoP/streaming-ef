@@ -329,6 +329,36 @@ class ShowResource extends Resource
                             ->success()
                             ->send();
                     }),
+                Action::make('pause_vod_recording')
+                    ->label('Pause VOD Recording')
+                    ->icon('heroicon-o-pause')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Pause VOD Recording')
+                    ->modalDescription('Archive recording will be paused. Existing segments are preserved and recording will resume seamlessly when you continue. Use this during intermissions.')
+                    ->modalSubmitActionLabel('Pause Recording')
+                    ->visible(fn (Show $record) => $record->status === 'live' && ! $record->vod_paused && $record->recordable)
+                    ->action(function (Show $record) {
+                        $record->pauseVodRecording();
+                        Notification::make()
+                            ->title('VOD recording paused')
+                            ->body("Recording paused for '{$record->title}'. Intermission content will not be included in VOD.")
+                            ->warning()
+                            ->send();
+                    }),
+                Action::make('resume_vod_recording')
+                    ->label('Continue VOD Recording')
+                    ->icon('heroicon-o-play')
+                    ->color('success')
+                    ->visible(fn (Show $record) => $record->status === 'live' && $record->vod_paused && $record->recordable)
+                    ->action(function (Show $record) {
+                        $record->resumeVodRecording();
+                        Notification::make()
+                            ->title('VOD recording resumed')
+                            ->body("Recording resumed for '{$record->title}'.")
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('view_stats')
                     ->label('View Statistics')
                     ->icon('heroicon-o-chart-bar')

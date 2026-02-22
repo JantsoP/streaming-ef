@@ -3,6 +3,13 @@ import GuestLayout from '@/Layouts/GuestLayout.vue';
 import Logo from "@/Components/Logo.vue";
 import { Head } from '@inertiajs/vue3'
 import LoginScreenWelcome from "@/Components/LoginScreenWelcome.vue";
+
+const props = defineProps({
+    isLocal: {
+        type: Boolean,
+        default: false,
+    },
+});
 </script>
 
 <template>
@@ -18,5 +25,18 @@ import LoginScreenWelcome from "@/Components/LoginScreenWelcome.vue";
                 :href="route('auth.login')"
                 type='submit'>Login
         </a>
+
+        <!-- Local development only: bypass OIDC and log in as dev admin instantly -->
+        <template v-if="isLocal">
+            <div class="mt-6 border-t border-primary-800 pt-4 text-center">
+                <p class="text-xs text-primary-500 mb-2 uppercase tracking-widest">Local Dev Only</p>
+                <a
+                    :href="route('dev.login')"
+                    class="py-2 px-8 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-white text-sm font-semibold focus:outline-none"
+                >
+                    Dev Admin Login (no OIDC)
+                </a>
+            </div>
+        </template>
     </GuestLayout>
 </template>
