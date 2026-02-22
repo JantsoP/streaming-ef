@@ -180,6 +180,28 @@ start_archive_ffmpeg() {
         rm -f "$archive_dir/"*.ts "$archive_dir/"*.m3u8 2>/dev/null
     fi
 
+    # Calculate the starting segment number.
+    # In resume mode we scan for the highest existing segment index so the new
+    # segments don't overwrite the pre-pause files.  In fresh mode this is always 0.
+    local start_num=0
+    if [[ "$mode" == "resume" ]]; then
+        local max_seg=-1
+        for seg_file in "$archive_dir/${stream}"_*_[0-9]*.ts; do
+            if [[ -f "$seg_file" ]]; then
+                local seg_num="${seg_file##*_}"
+                seg_num="${seg_num%.ts}"
+                seg_num=$((10#$seg_num))   # strip leading zeros for arithmetic
+                if (( seg_num > max_seg )); then
+                    max_seg=$seg_num
+                fi
+            fi
+        done
+        if (( max_seg >= 0 )); then
+            start_num=$(( max_seg + 1 ))
+        fi
+        echo "[$(date)] Resume: next segment start_number = $start_num"
+    fi
+
     echo "[$(date)] Starting archive FFmpeg for $stream_key -> $archive_dir"
 
     ffmpeg -f flv -i "$SRS_RTMP_URL/$app/$stream" \
@@ -206,7 +228,7 @@ start_archive_ffmpeg() {
         -hls_list_size 0 \
         -hls_flags independent_segments+program_date_time+discont_start+append_list \
         -hls_segment_type mpegts \
-        -start_number 0 \
+        -start_number "$start_num" \
         -hls_segment_filename "$archive_dir/${stream}_%v_%05d.ts" \
         -master_pl_name "${stream}_master.m3u8" \
         -var_stream_map "v:0,a:0,name:sd v:1,a:1,name:hd v:2,a:2,name:fhd" \
