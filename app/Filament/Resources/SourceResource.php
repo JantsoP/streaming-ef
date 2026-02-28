@@ -72,10 +72,10 @@ class SourceResource extends Resource
                     ->columns(2),
 
                 Section::make('Stream Configuration')
-                    ->description('OBS Studio Configuration')
+                    ->description('OBS Studio Configuration — RTMP and SRT (lower latency)')
                     ->schema([
                         Forms\Components\Placeholder::make('obs_server_url')
-                            ->label('OBS Server URL')
+                            ->label('RTMP Server URL')
                             ->content(function (?Source $record) {
                                 if (! $record) {
                                     return 'Will be generated on save';
@@ -90,7 +90,7 @@ class SourceResource extends Resource
                             })
                             ->helperText('Click to copy → OBS Settings → Stream → Server'),
                         Forms\Components\Placeholder::make('obs_stream_key_display')
-                            ->label('OBS Stream Key')
+                            ->label('OBS Stream Key (RTMP)')
                             ->content(function (?Source $record) {
                                 if (! $record || ! $record->stream_key) {
                                     return 'Will be generated on save';
@@ -104,7 +104,37 @@ class SourceResource extends Resource
                                 );
                             })
                             ->helperText('Click to copy → OBS Settings → Stream → Stream Key'),
-                    ]),
+                        Forms\Components\Placeholder::make('srt_server_url')
+                            ->label('SRT Server URL')
+                            ->content(function (?Source $record) {
+                                if (! $record) {
+                                    return 'Will be generated on save';
+                                }
+
+                                return new \Illuminate\Support\HtmlString(
+                                    '<code class="text-sm font-mono select-all cursor-pointer" 
+                                          onclick="navigator.clipboard.writeText(this.textContent); this.classList.add(\'opacity-50\'); setTimeout(() => this.classList.remove(\'opacity-50\'), 200);">'
+                                    .htmlspecialchars($record->getSrtServerUrl()).
+                                    '</code>'
+                                );
+                            })
+                            ->helperText('Click to copy → OBS Settings → Stream → Server (lower latency than RTMP)'),
+                        Forms\Components\Placeholder::make('srt_stream_key_display')
+                            ->label('SRT Stream Key')
+                            ->content(function (?Source $record) {
+                                if (! $record || ! $record->stream_key) {
+                                    return 'Will be generated on save';
+                                }
+
+                                return new \Illuminate\Support\HtmlString(
+                                    '<code class="text-sm font-mono select-all cursor-pointer" 
+                                          onclick="navigator.clipboard.writeText(this.textContent); this.classList.add(\'opacity-50\'); setTimeout(() => this.classList.remove(\'opacity-50\'), 200);">'
+                                    .htmlspecialchars($record->getSrtStreamKey()).
+                                    '</code>'
+                                );
+                            })
+                            ->helperText('Click to copy → OBS Settings → Stream → Stream Key'),
+                    ])->columns(2),
             ]);
     }
 

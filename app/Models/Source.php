@@ -172,6 +172,28 @@ class Source extends Model
     }
 
     /**
+     * Get the SRT server URL for OBS configuration.
+     * Returns URL in format: srt://server:10080
+     */
+    public function getSrtServerUrl()
+    {
+        $originServer = \App\Models\Server::where('type', \App\Enum\ServerTypeEnum::ORIGIN)
+            ->where('status', \App\Enum\ServerStatusEnum::ACTIVE)
+            ->first();
+
+        return "srt://{$originServer->hostname}:10080";
+    }
+
+    /**
+     * Get the SRT stream key for OBS configuration.
+     * Returns: #!::r=live/<slug>?secret=<stream_key>,m=publish
+     */
+    public function getSrtStreamKey()
+    {
+        return '#!::r=live/'.$this->slug.'?secret='.$this->stream_key.',m=publish';
+    }
+
+    /**
      * Get HLS master playlist URL.
      */
     public function getHlsUrl()

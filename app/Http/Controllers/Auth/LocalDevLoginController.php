@@ -26,8 +26,7 @@ class LocalDevLoginController extends Controller
         $user = User::firstOrCreate(
             ['sub' => 'local-dev-admin'],
             [
-                'name'     => 'Dev Admin',
-                'is_admin' => true,
+                'name' => 'Dev Admin',
             ]
         );
 

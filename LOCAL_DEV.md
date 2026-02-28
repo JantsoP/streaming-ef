@@ -11,10 +11,10 @@ Install the following on your Ubuntu/Debian machine:
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+curl -fsSL https://download.docker.com/linux/debian/gpg | \
   sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-  https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
@@ -24,6 +24,10 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # PHP CLI (for Composer — only needed for the Sail helper script)
+# Add Sury PHP repository for PHP 8.2+
+sudo apt-get install -y lsb-release ca-certificates curl
+curl -sSL https://packages.sury.org/php/README.txt | sudo bash -x
+sudo apt-get update
 sudo apt-get install -y php8.2-cli php8.2-curl php8.2-xml php8.2-mbstring unzip
 
 # Composer
@@ -46,6 +50,10 @@ cd streaming-ef
 # Install PHP dependencies (needed to get the `sail` script)
 composer install --ignore-platform-reqs
 
+# Set environment variables for sail (add to ~/.bashrc to make permanent)
+export COMPOSE_FILE=docker-compose.local.yml
+alias sail='./vendor/bin/sail'
+
 # Create your local .env
 cp .env.example .env
 ```
@@ -54,14 +62,16 @@ cp .env.example .env
 
 ## 2. Edit `.env` for local dev
 
-The `.env.example` already ships with MinIO defaults. The only things you **must** fill in:
+The `.env.example` already ships with MinIO defaults. Edit your `.env` file.
+
+**If running on a VM/remote server**, replace `localhost` with your server's IP address (e.g., `192.168.86.129`):
 
 ```dotenv
-APP_NAME="Streaming EF Local"
+APP_NAME="Streaming EF Local"     # IMPORTANT: keep the quotes!
 APP_ENV=local
 APP_KEY=                          # generated below
 APP_DEBUG=true
-APP_URL=http://localhost
+APP_URL=http://192.168.86.129     # Use VM IP instead of localhost
 
 DB_CONNECTION=mysql
 DB_HOST=mysql
@@ -73,25 +83,26 @@ DB_PASSWORD=password
 REDIS_HOST=redis
 REDIS_PORT=6379
 
-# WebSockets — Soketi runs inside the compose stack.
-# These values can be anything you like; Soketi is configured to accept whatever
-# you set here (it reads the same env vars). They just need to be consistent.
-# The .env.example defaults below work as-is, no changes needed.
+# WebSockets — Use VM IP for client connections from other machines
 BROADCAST_DRIVER=reverb
 REVERB_APP_ID=my-app-id        # any string
 REVERB_APP_KEY=my-app-key      # any string
 REVERB_APP_SECRET=my-app-secret  # any string
-REVERB_HOST=localhost
+REVERB_HOST=192.168.86.129     # Use VM IP for external WebSocket connections
 REVERB_PORT=6001
 REVERB_SCHEME=http
 # PUSHER_* mirror the REVERB_* values automatically via .env.example variable references
 
-# DVR → MinIO (defaults already match docker-compose.local.yml)
+# Vite HMR — required when accessing from a remote machine/VM
+# Without this, the browser tries to connect to localhost:5173 for hot reload
+VITE_DEV_SERVER_HOST=192.168.86.129
+
+# DVR → MinIO (use VM IP for browser access to recordings)
 DVR_AWS_ACCESS_KEY_ID=minio
 DVR_AWS_SECRET_ACCESS_KEY=minio123
 DVR_AWS_BUCKET=recording
-DVR_AWS_ENDPOINT=http://minio:9000
-DVR_AWS_URL=http://localhost:9000/recording
+DVR_AWS_ENDPOINT=http://minio:9000          # Internal Docker network address
+DVR_AWS_URL=http://192.168.86.129:9000/recording  # External browser access
 DVR_AWS_USE_PATH_STYLE_ENDPOINT=true
 DVR_EVENT_SLUG=local
 
@@ -106,6 +117,12 @@ HLS_ARCHIVE_PAUSE_DIR=/var/www/hls/archive-pause
 VOD_CREATION_DELAY_SECONDS=15
 ```
 
+**If running directly on your local machine**, use `localhost` instead:
+- `APP_URL=http://localhost`
+- `REVERB_HOST=localhost`
+- `DVR_AWS_URL=http://localhost:9000/recording`
+- `VITE_DEV_SERVER_HOST` — omit entirely (not needed locally)
+
 Leave `OIDC_*`, `HETZNER_*`, `DNS_*` empty — they are not needed for local dev.
 
 ---
@@ -113,32 +130,32 @@ Leave `OIDC_*`, `HETZNER_*`, `DNS_*` empty — they are not needed for local dev
 ## 3. Start the stack
 
 ```bash
-# Generate APP_KEY
+# Generate APP_KEY (runs on your host machine, not in Docker)
 php artisan key:generate
 
 # Build local images (dvr-uploader and ffmpeg-hls use local Dockerfiles)
-sail -f docker-compose.local.yml build
+sail build
 
 # Start everything in the background
-sail -f docker-compose.local.yml up -d
-```
+sail up -d
 
-**Tip:** Add this to your shell profile so you don't need `-f` every time:
-
-```bash
-echo 'export COMPOSE_FILE=docker-compose.local.yml' >> ~/.bashrc
-source ~/.bashrc
-# Now you can just use: sail up -d
+# Wait ~30 seconds for MySQL to fully start before proceeding to step 4
 ```
 
 ---
 
 ## 4. Run migrations and seed local data
 
+**Important:** Make sure the containers are running (step 3) before running this command.
+
 Migrations must run on **first install** — Docker starts a fresh empty MySQL container and migrations create all the tables and columns the app needs. This is a one-time step per fresh environment.
 
 ```bash
-sail -f docker-compose.local.yml artisan migrate --seed
+# Fix permissions for the entire project directory
+sail exec laravel.test chown -R sail:sail /var/www/html
+
+# Run migrations and seeders
+sail artisan migrate --seed
 ```
 
 > **Pulling new code later?** If a `git pull` includes new migration files, run `sail artisan migrate` (no `--seed`) to apply only the new columns/tables without re-seeding.
@@ -162,7 +179,7 @@ Save the stream key — you will need it for OBS.
 
 **Option A — Web console (easiest):**
 
-1. Open http://localhost:9001
+1. Open http://192.168.86.129:9001 (or http://localhost:9001 if running on your local machine)
 2. Login: `minio` / `minio123`
 3. Click **Create Bucket**, name it `recording`
 4. Open bucket settings → **Access Policy** → set to **Public**
@@ -170,7 +187,7 @@ Save the stream key — you will need it for OBS.
 **Option B — CLI inside the MinIO container:**
 
 ```bash
-sail -f docker-compose.local.yml exec minio sh -c "
+sail exec minio sh -c "
   mc alias set local http://localhost:9000 minio minio123 &&
   mc mb --ignore-existing local/recording &&
   mc anonymous set public local/recording
@@ -184,14 +201,18 @@ sail -f docker-compose.local.yml exec minio sh -c "
 In a separate terminal (runs hot-reloading for Vue/JS assets):
 
 ```bash
-sail -f docker-compose.local.yml npm run dev
+# Install npm dependencies first (one-time setup)
+sail npm install
+
+# Start Vite dev server
+sail npm run dev
 ```
 
 ---
 
 ## 7. Log in without OIDC
 
-Open **http://localhost** in your browser.
+Open **http://192.168.86.129** (or **http://localhost** if on your local machine) in your browser.
 
 The login page shows a yellow **"Dev Admin Login (no OIDC)"** button at the bottom. Click it — you are instantly logged in as a full admin. No Eurofurence identity account needed.
 
@@ -199,7 +220,7 @@ The login page shows a yellow **"Dev Admin Login (no OIDC)"** button at the bott
 
 ## 8. Create a Show in the admin panel
 
-1. Go to **http://localhost/admin**
+1. Go to **http://192.168.86.129/admin** (or **http://localhost/admin** if on your local machine)
 2. **Sources** → confirm `Test Stream` exists (created by the seeder)
 3. **Shows** → Create a new show:
    - Title: anything
@@ -216,12 +237,12 @@ Both RTMP and SRT are active simultaneously — OBS operators can use either.
 
 **RTMP (simplest, any OBS version):**
 - Settings → Stream → Service: `Custom`
-- Server: `rtmp://localhost:1935/live`
+- Server: `rtmp://192.168.86.129:1935/live` (or `rtmp://localhost:1935/live` if OBS is on the same machine)
 - Stream Key: _(from step 4 above)_
 
 **SRT (lower latency, more robust on WiFi):**
 - Settings → Stream → Service: `Custom`
-- Server: `srt://localhost:10080`
+- Server: `srt://192.168.86.129:10080` (or `srt://localhost:10080` if OBS is on the same machine)
 - Stream Key: `#!::r=live/<your-stream-key>,m=publish`
 
 SRT reduces ingest latency from ~2–4 s to ~120 ms and recovers silently from packet loss that would stutter or drop an RTMP stream. On a reliable wired connection the difference is invisible; on venue WiFi it's meaningful.
@@ -232,24 +253,24 @@ Click **Start Streaming**. The FFmpeg transcoder (`origin-ffmpeg-hls`) will dete
 
 ## 10. Watch the stream
 
-Browse to the show page at **http://localhost/show/\<slug\>** — the player will load.
+Browse to the show page at **http://192.168.86.129/show/\<slug\>** (or **http://localhost/show/\<slug\>** if on your local machine) — the player will load.
 
-**Direct HLS URLs** for testing with VLC or ffplay:
+**Direct HLS URLs** for testing with VLC or ffplay (replace `192.168.86.129` with `localhost` if running locally):
 
 ```bash
 # Master playlist (adaptive bitrate)
-http://localhost:8085/live/test-stream/master.m3u8
+http://192.168.86.129:8085/live/test-stream/master.m3u8
 
 # Individual qualities
-http://localhost:8085/live/test-stream_fhd/index.m3u8
-http://localhost:8085/live/test-stream_hd/index.m3u8
-http://localhost:8085/live/test-stream_sd/index.m3u8
+http://192.168.86.129:8085/live/test-stream_fhd/index.m3u8
+http://192.168.86.129:8085/live/test-stream_hd/index.m3u8
+http://192.168.86.129:8085/live/test-stream_sd/index.m3u8
 
 # VLC
-vlc http://localhost:8085/live/test-stream_fhd/index.m3u8
+vlc http://192.168.86.129:8085/live/test-stream_fhd/index.m3u8
 
 # ffplay
-ffplay http://localhost:8085/live/test-stream_fhd/index.m3u8
+ffplay http://192.168.86.129:8085/live/test-stream_fhd/index.m3u8
 ```
 
 ---
@@ -269,14 +290,14 @@ While a show is live, Filament → Shows → row actions (or the Edit page heade
 2. Start streaming from OBS — archive FFmpeg starts within ~5 s of the stream being detected
 3. Confirm archive FFmpeg started:
    ```bash
-   sail -f docker-compose.local.yml logs -f origin-ffmpeg-hls | grep Archive
+   sail logs -f origin-ffmpeg-hls | grep Archive
    # Should see: [Archive test-stream] Output #0, hls ...
    ```
 4. _(Optional)_ Click **Pause VOD Recording** to skip an intermission, then **Continue VOD Recording** to resume
 5. In Filament admin, click **End Stream** (removes archive flag, stops archive FFmpeg cleanly)
 6. Make sure Horizon is running:
    ```bash
-   sail -f docker-compose.local.yml artisan horizon
+   sail artisan horizon
    ```
 7. After ~15 seconds, `CreateVodFromShowJob` runs:
    - Checks `#EXT-X-ENDLIST` is present in archive playlists (retries if not)
@@ -284,18 +305,18 @@ While a show is live, Filament → Shows → row actions (or the Edit page heade
    - **Verifies** S3 file count and master playlist size before deleting local files
    - Deletes the local archive directory only after successful S3 verification
    - Creates a `Recording` row → `ProcessRecordingJob` extracts duration + thumbnail
-8. Browse to **http://localhost/recordings** or check Filament → Recordings
+8. Browse to **http://192.168.86.129/recordings** (or **http://localhost/recordings**) or check Filament → Recordings
 
 **Verify files in MinIO:**
 ```bash
 # Open the MinIO console and browse to:
 # recording → on-demand → local → <show-slug>/
-open http://localhost:9001
+open http://192.168.86.129:9001  # or http://localhost:9001
 ```
 
 **Watch archive FFmpeg write segments in real time:**
 ```bash
-sail -f docker-compose.local.yml exec origin-ffmpeg-hls \
+sail exec origin-ffmpeg-hls \
   ls -lh /var/www/hls/archive/test-stream/
 ```
 
@@ -305,37 +326,37 @@ sail -f docker-compose.local.yml exec origin-ffmpeg-hls \
 
 ```bash
 # View all running containers
-sail -f docker-compose.local.yml ps
+sail ps
 
 # Follow Laravel logs
-sail -f docker-compose.local.yml logs -f laravel.test
+sail logs -f laravel.test
 
 # Follow archive FFmpeg logs (watch segment writing for VOD)
-sail -f docker-compose.local.yml logs -f origin-ffmpeg-hls
+sail logs -f origin-ffmpeg-hls
 
 # Follow DVR uploader logs (SRS .mp4 segment backup uploads to MinIO)
-sail -f docker-compose.local.yml logs -f dvr-uploader
+sail logs -f dvr-uploader
 
 # Follow SRS logs (RTMP ingest + DVR segment creation)
-sail -f docker-compose.local.yml logs -f origin-srs
+sail logs -f origin-srs
 
 # Run artisan commands
-sail -f docker-compose.local.yml artisan <command>
+sail artisan <command>
 
 # Open a shell in the app container
-sail -f docker-compose.local.yml shell
+sail shell
 
 # Re-run seeders (safe — uses updateOrCreate)
-sail -f docker-compose.local.yml artisan db:seed
+sail artisan db:seed
 
 # Wipe and re-seed from scratch
-sail -f docker-compose.local.yml artisan migrate:fresh --seed
+sail artisan migrate:fresh --seed
 
 # Stop everything (keeps volumes)
-sail -f docker-compose.local.yml down
+sail down
 
 # Stop and destroy all data (volumes too)
-sail -f docker-compose.local.yml down -v
+sail down -v
 ```
 
 ---
