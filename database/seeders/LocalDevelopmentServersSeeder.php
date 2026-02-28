@@ -24,13 +24,17 @@ class LocalDevelopmentServersSeeder extends Seeder
 
         $this->command->info('Creating local development servers...');
 
+        // Derive hostname from APP_URL so VM/remote setups show the correct IP
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST) ?? 'localhost';
+
         // Create Origin Server (SRS)
+        // Match on type only so re-seeding updates rather than duplicates the row
         $origin = Server::updateOrCreate(
             [
-                'hostname' => 'localhost',
                 'type' => ServerTypeEnum::ORIGIN,
             ],
             [
+                'hostname' => $appHost,
                 'hetzner_id' => null,
                 'ip' => null, // No DNS creation needed
                 'port' => 8080,
@@ -47,16 +51,17 @@ class LocalDevelopmentServersSeeder extends Seeder
 
         $this->command->info("✓ Created Origin Server: {$origin->hostname} (ID: {$origin->id})");
 
-        // Create localhost edge server for direct browser access
+        // Create edge server for direct browser access
+        // Match on type+port only so re-seeding updates hostname if APP_URL changed
         $localEdge = Server::updateOrCreate(
             [
-                'hostname' => 'localhost',
                 'type' => ServerTypeEnum::EDGE,
                 'port' => 8085,
             ],
             [
+                'hostname' => $appHost,
                 'hetzner_id' => null,
-                'ip' => '127.0.0.1',
+                'ip' => $appHost,
                 'shared_secret' => Str::random(40),
                 'status' => ServerStatusEnum::ACTIVE,
                 'max_clients' => 100,
