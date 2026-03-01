@@ -32,7 +32,7 @@ class HlsSessionController extends Controller
         // Format: /live/{slug}_quality.m3u8 or /live/{slug}_quality_segment.ts or /live/{slug}_master.m3u8
         if (!preg_match('#^/live/([^/_]+?)(?:_(?:master|fhd|hd|sd|ld))?(?:\.|_)#', $originalUri, $slugMatches)) {
             Log::warning('Invalid HLS URI format', ['uri' => $originalUri]);
-            return response()->json(['error' => 'Invalid URI'], 403);
+            return response('Invalid URI', 403);
         }
         
         $streamSlug = $slugMatches[1];
@@ -109,7 +109,7 @@ class HlsSessionController extends Controller
         
         if (!$source) {
             Log::warning('Source not found for HLS request', ['slug' => $streamSlug]);
-            return response()->json(['error' => 'Stream not found'], 404);
+            return response('Stream not found', 403);
         }
         
         if ($source->status !== \App\Enum\SourceStatusEnum::ONLINE) {
@@ -117,7 +117,7 @@ class HlsSessionController extends Controller
                 'slug' => $streamSlug,
                 'status' => $source->status->value,
             ]);
-            return response()->json(['error' => 'Stream offline'], 404);
+            return response('Stream offline', 403);
         }
         
         // Create or retrieve session ID for this viewer
