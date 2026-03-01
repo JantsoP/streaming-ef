@@ -232,6 +232,12 @@ const startingSoonShows = ref(props.startingSoonShows);
 const upcomingShows = ref(props.upcomingShows);
 const popularRecordings = ref(props.popularRecordings);
 
+// Compute offset between server clock and browser clock once at page load.
+// This corrects for VM/container clock skew so the elapsed timer is always accurate.
+const serverClockOffset = props.currentTime
+  ? Date.parse(props.currentTime) - Date.now()
+  : 0;
+
 let refreshInterval;
 
 // Format viewer count (1000 -> 1K, etc.)
@@ -246,10 +252,11 @@ const formatViewerCount = (count) => {
 };
 
 // Format duration
+// Uses serverClockOffset to compensate for any clock skew between browser and server.
 const formatDuration = (startTime) => {
   const start = new Date(startTime);
-  const now = new Date();
-  const diff = Math.floor((now - start) / 1000);
+  const nowMs = Date.now() + serverClockOffset;
+  const diff = Math.max(0, Math.floor((nowMs - start.getTime()) / 1000));
 
   const hours = Math.floor(diff / 3600);
   const minutes = Math.floor((diff % 3600) / 60);
