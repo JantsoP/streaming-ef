@@ -13,6 +13,9 @@ CHECK_INTERVAL="${CHECK_INTERVAL:-5}"
 
 # Ensure required directories exist
 mkdir -p "$OUTPUT_BASE_DIR" "$ARCHIVE_BASE_DIR" "$ARCHIVE_FLAGS_DIR" "$ARCHIVE_PAUSE_DIR"
+# Make flag dirs world-writable so the Laravel app (sail user, uid 1000)
+# can create/delete flag files even though this container runs as root.
+chmod 777 "$ARCHIVE_FLAGS_DIR" "$ARCHIVE_PAUSE_DIR" "$ARCHIVE_BASE_DIR"
 
 # Associative arrays to track running FFmpeg processes
 declare -A FFMPEG_PIDS
@@ -173,6 +176,7 @@ start_archive_ffmpeg() {
 
     local archive_dir="$ARCHIVE_BASE_DIR/$stream"
     mkdir -p "$archive_dir"
+    chmod 777 "$archive_dir"
 
     if [[ "$mode" == "resume" ]]; then
         echo "[$(date)] Resuming archive for $stream — appending to existing segments"
