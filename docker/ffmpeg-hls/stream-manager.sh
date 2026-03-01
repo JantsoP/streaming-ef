@@ -11,6 +11,9 @@ ARCHIVE_FLAGS_DIR="${ARCHIVE_FLAGS_DIR:-/var/www/hls/archive-flags}"
 ARCHIVE_PAUSE_DIR="${ARCHIVE_PAUSE_DIR:-/var/www/hls/archive-pause}"
 CHECK_INTERVAL="${CHECK_INTERVAL:-5}"
 
+# Ensure required directories exist
+mkdir -p "$OUTPUT_BASE_DIR" "$ARCHIVE_BASE_DIR" "$ARCHIVE_FLAGS_DIR" "$ARCHIVE_PAUSE_DIR"
+
 # Associative arrays to track running FFmpeg processes
 declare -A FFMPEG_PIDS
 declare -A STREAM_APPS

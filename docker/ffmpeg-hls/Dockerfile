@@ -4,7 +4,10 @@ FROM alpine:latest
 RUN apk add --no-cache ffmpeg bash curl jq
 
 # Create directories
-RUN mkdir -p /var/www/html/hls/live
+RUN mkdir -p /var/www/html/hls/live \
+    /var/www/hls/archive \
+    /var/www/hls/archive-flags \
+    /var/www/hls/archive-pause
 
 # Copy the stream manager script
 COPY stream-manager.sh /stream-manager.sh
