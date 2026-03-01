@@ -259,18 +259,18 @@ Browse to the show page at **http://192.168.86.129/show/\<slug\>** (or **http://
 
 ```bash
 # Master playlist (adaptive bitrate)
-http://192.168.86.129:8085/live/test-stream/master.m3u8
+http://192.168.86.129:8085/live/test-stream_master.m3u8
 
 # Individual qualities
-http://192.168.86.129:8085/live/test-stream_fhd/index.m3u8
-http://192.168.86.129:8085/live/test-stream_hd/index.m3u8
-http://192.168.86.129:8085/live/test-stream_sd/index.m3u8
+http://192.168.86.129:8085/live/test-stream_fhd.m3u8
+http://192.168.86.129:8085/live/test-stream_hd.m3u8
+http://192.168.86.129:8085/live/test-stream_sd.m3u8
 
 # VLC
-vlc http://192.168.86.129:8085/live/test-stream_fhd/index.m3u8
+vlc http://192.168.86.129:8085/live/test-stream_master.m3u8
 
 # ffplay
-ffplay http://192.168.86.129:8085/live/test-stream_fhd/index.m3u8
+ffplay http://192.168.86.129:8085/live/test-stream_master.m3u8
 ```
 
 ---

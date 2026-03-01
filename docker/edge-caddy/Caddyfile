@@ -1,4 +1,4 @@
-http://:{$CADDY_PORT:8085} {
+http://:8085 {
     # Set up logging
     log {
         output file /var/log/caddy/access.log
@@ -6,7 +6,7 @@ http://:{$CADDY_PORT:8085} {
     }
 
     # Forward ALL traffic to nginx edge server
-    reverse_proxy edge-nginx:{$NGINX_EDGE_PORT:8081} {
+    reverse_proxy edge-nginx:8081 {
         # Pass through real IP
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
