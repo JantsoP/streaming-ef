@@ -116,7 +116,7 @@ HLS_ARCHIVE_FLAGS_DIR=/var/www/hls/archive-flags
 # Pause flag files used by the "Pause VOD Recording" admin button (intermissions).
 HLS_ARCHIVE_PAUSE_DIR=/var/www/hls/archive-pause
 # Short delay so archive FFmpeg can write #EXT-X-ENDLIST before the upload job runs.
-VOD_CREATION_DELAY_SECONDS=15
+VOD_CREATION_DELAY_SECONDS=30
 ```
 
 **If running directly on your local machine**, use `localhost` instead:

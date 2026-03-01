@@ -18,9 +18,19 @@ class CreateVodFromShowJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * Retry once on transient S3 errors. The job is idempotent.
+     * Retry up to 5 times — covers slow FFmpeg flushes and transient S3 errors.
+     * The job is idempotent (S3 verification before local delete).
      */
-    public int $tries = 2;
+    public int $tries = 5;
+
+    /**
+     * Exponential backoff: 30s, 60s, 120s, 300s between retries.
+     * Gives archive FFmpeg plenty of time to finish writing #EXT-X-ENDLIST.
+     */
+    public function backoff(): array
+    {
+        return [30, 60, 120, 300];
+    }
 
     /**
      * For a 2-hour show at 3 qualities (~6 Mbit avg) that is ~5 GB.
