@@ -194,6 +194,18 @@ class Source extends Model
     }
 
     /**
+     * Get the full SRT URL for OBS — streamid embedded in the URL query string.
+     * Use this in OBS Settings → Stream → Server (leave Stream Key empty).
+     * Embedding the streamid avoids OBS URL-encoding the leading '#' to '%23',
+     * which would break SRS's streamid parser.
+     * Returns: srt://host:10080?streamid=#!::r=live/<slug>?secret=<key>,m=publish
+     */
+    public function getSrtObsUrl()
+    {
+        return $this->getSrtServerUrl().'?streamid='.$this->getSrtStreamKey();
+    }
+
+    /**
      * Get HLS master playlist URL.
      */
     public function getHlsUrl()

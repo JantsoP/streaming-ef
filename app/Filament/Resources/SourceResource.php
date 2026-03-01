@@ -104,23 +104,24 @@ class SourceResource extends Resource
                                 );
                             })
                             ->helperText('Click to copy → OBS Settings → Stream → Stream Key'),
-                        Forms\Components\Placeholder::make('srt_server_url')
-                            ->label('SRT Server URL')
+                        Forms\Components\Placeholder::make('srt_obs_url')
+                            ->label('OBS SRT Server URL (Full)')
                             ->content(function (?Source $record) {
-                                if (! $record) {
+                                if (! $record || ! $record->stream_key) {
                                     return 'Will be generated on save';
                                 }
 
                                 return new \Illuminate\Support\HtmlString(
                                     '<code class="text-sm font-mono select-all cursor-pointer" 
                                           onclick="navigator.clipboard.writeText(this.textContent); this.classList.add(\'opacity-50\'); setTimeout(() => this.classList.remove(\'opacity-50\'), 200);">'
-                                    .htmlspecialchars($record->getSrtServerUrl()).
+                                    .htmlspecialchars($record->getSrtObsUrl()).
                                     '</code>'
                                 );
                             })
-                            ->helperText('Click to copy → OBS Settings → Stream → Server (lower latency than RTMP)'),
+                            ->helperText('Click to copy → OBS Settings → Stream → Server (leave Stream Key empty)')
+                            ->columnSpanFull(),
                         Forms\Components\Placeholder::make('srt_stream_key_display')
-                            ->label('SRT Stream Key')
+                            ->label('SRT Stream Key (reference)')
                             ->content(function (?Source $record) {
                                 if (! $record || ! $record->stream_key) {
                                     return 'Will be generated on save';
@@ -133,7 +134,8 @@ class SourceResource extends Resource
                                     '</code>'
                                 );
                             })
-                            ->helperText('Click to copy → OBS Settings → Stream → Stream Key'),
+                            ->helperText('Already included in the URL above — only needed if your software has a separate streamid field')
+                            ->columnSpanFull(),
                     ])->columns(2),
             ]);
     }
