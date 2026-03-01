@@ -1,6 +1,6 @@
 # Origin Caddy - SSL termination for origin server
 # In production this would be on port 8080, using 8070 for local development
-http://localhost:8070 {
+http://:{$CADDY_PORT:8070} {
     # Enable automatic HTTPS with Let's Encrypt in production
     # For localhost, it will use a self-signed certificate
 
@@ -12,7 +12,7 @@ http://localhost:8070 {
 
     # Forward all traffic to origin nginx server
     # Nginx handles authentication via auth_request
-    reverse_proxy localhost:8083 {
+    reverse_proxy origin-nginx:{$NGINX_ORIGIN_PORT:8083} {
         # Pass through real IP
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
