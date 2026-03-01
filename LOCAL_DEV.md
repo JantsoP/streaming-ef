@@ -242,7 +242,7 @@ Both RTMP and SRT are active simultaneously — OBS operators can use either.
 
 **SRT (lower latency, more robust on WiFi):**
 - Settings → Stream → Service: `Custom`
-- Server: `srt://192.168.86.129:10080?streamid=#!::r=live/<your-stream-slug>?secret=<your-stream-key>,m=publish`
+- Server: `srt://192.168.86.129:10080?streamid=#!::r=ingress/<your-stream-slug>?secret=<your-stream-key>,m=publish`
   _(or replace `192.168.86.129` with `localhost` if OBS is on the same machine)_
 - Stream Key: _(leave empty — the streamid is already in the Server URL above)_
 
@@ -398,8 +398,9 @@ Confirm SRS is receiving the stream: `curl http://localhost:1985/api/v1/streams/
 **SRT stream not connecting:**  
 SRT uses UDP, which is blocked by some firewalls/VPNs. Confirm port 10080/udp is reachable.  
 Check SRS logs for the stream ID: `sail logs -f origin-srs | grep srt`  
-**OBS Server URL must be the full combined URL** — copy it from the Sources edit page in Filament (the "OBS SRT Server URL (Full)" field). Leave the OBS Stream Key field empty.  
-Do NOT put the streamid in OBS's Stream Key field — some OBS versions URL-encode the `#` to `%23` which breaks SRS's streamid parser.
+**OBS Server URL must be the full combined URL** — copy the **SRT Server URL** from the Sources edit page in Filament, which already embeds the stream key. Leave OBS's Stream Key field empty.  
+Do NOT put the streamid in OBS's Stream Key field — some OBS versions URL-encode the `#` to `%23` which breaks SRS's streamid parser.  
+The streamid must use `r=ingress/` (not `r=live/`) — publishing to `live` from external IPs is blocked.
 
 **DVR segments not appearing in MinIO:**  
 These are the raw SRS `.mp4` backup segments (not used for VOD anymore but still uploaded).  

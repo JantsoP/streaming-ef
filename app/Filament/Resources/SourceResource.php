@@ -83,7 +83,7 @@ class SourceResource extends Resource
 
                                 return new \Illuminate\Support\HtmlString(
                                     '<code class="text-sm font-mono select-all cursor-pointer" 
-                                          onclick="navigator.clipboard.writeText(this.textContent); this.classList.add(\'opacity-50\'); setTimeout(() => this.classList.remove(\'opacity-50\'), 200);">'
+                                          onclick="var t=document.createElement(\'textarea\');t.value=this.textContent;document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);this.classList.add(\'opacity-50\');setTimeout(()=>this.classList.remove(\'opacity-50\'),200);">'
                                     .htmlspecialchars($record->getRtmpServerUrl()).
                                     '</code>'
                                 );
@@ -98,14 +98,14 @@ class SourceResource extends Resource
 
                                 return new \Illuminate\Support\HtmlString(
                                     '<code class="text-sm font-mono select-all cursor-pointer" 
-                                          onclick="navigator.clipboard.writeText(this.textContent); this.classList.add(\'opacity-50\'); setTimeout(() => this.classList.remove(\'opacity-50\'), 200);">'
+                                          onclick="var t=document.createElement(\'textarea\');t.value=this.textContent;document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);this.classList.add(\'opacity-50\');setTimeout(()=>this.classList.remove(\'opacity-50\'),200);">'
                                     .htmlspecialchars($record->getObsStreamKey()).
                                     '</code>'
                                 );
                             })
                             ->helperText('Click to copy → OBS Settings → Stream → Stream Key'),
                         Forms\Components\Placeholder::make('srt_obs_url')
-                            ->label('OBS SRT Server URL (Full)')
+                            ->label('SRT Server URL')
                             ->content(function (?Source $record) {
                                 if (! $record || ! $record->stream_key) {
                                     return 'Will be generated on save';
@@ -113,15 +113,14 @@ class SourceResource extends Resource
 
                                 return new \Illuminate\Support\HtmlString(
                                     '<code class="text-sm font-mono select-all cursor-pointer" 
-                                          onclick="navigator.clipboard.writeText(this.textContent); this.classList.add(\'opacity-50\'); setTimeout(() => this.classList.remove(\'opacity-50\'), 200);">'
-                                    .htmlspecialchars($record->getSrtObsUrl()).
+                                          onclick="var t=document.createElement(\'textarea\');t.value=this.textContent;document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);this.classList.add(\'opacity-50\');setTimeout(()=>this.classList.remove(\'opacity-50\'),200);">'
+                                    .htmlspecialchars($record->getSrtServerUrl()).
                                     '</code>'
                                 );
                             })
-                            ->helperText('Click to copy → OBS Settings → Stream → Server (leave Stream Key empty)')
-                            ->columnSpanFull(),
+                            ->helperText('Click to copy → OBS Settings → Stream → Server'),
                         Forms\Components\Placeholder::make('srt_stream_key_display')
-                            ->label('SRT Stream Key (reference)')
+                            ->label('SRT Stream Key')
                             ->content(function (?Source $record) {
                                 if (! $record || ! $record->stream_key) {
                                     return 'Will be generated on save';
@@ -129,13 +128,12 @@ class SourceResource extends Resource
 
                                 return new \Illuminate\Support\HtmlString(
                                     '<code class="text-sm font-mono select-all cursor-pointer" 
-                                          onclick="navigator.clipboard.writeText(this.textContent); this.classList.add(\'opacity-50\'); setTimeout(() => this.classList.remove(\'opacity-50\'), 200);">'
+                                          onclick="var t=document.createElement(\'textarea\');t.value=this.textContent;document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);this.classList.add(\'opacity-50\');setTimeout(()=>this.classList.remove(\'opacity-50\'),200);">'
                                     .htmlspecialchars($record->getSrtStreamKey()).
                                     '</code>'
                                 );
                             })
-                            ->helperText('Already included in the URL above — only needed if your software has a separate streamid field')
-                            ->columnSpanFull(),
+                            ->helperText('Click to copy → OBS Settings → Stream → Stream Key'),
                     ])->columns(2),
             ]);
     }

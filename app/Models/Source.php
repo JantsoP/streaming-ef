@@ -186,11 +186,13 @@ class Source extends Model
 
     /**
      * Get the SRT stream key for OBS configuration.
-     * Returns: #!::r=live/<slug>?secret=<stream_key>,m=publish
+     * Uses `ingress` app (not `live`) so the on_publish webhook fires with app=ingress,
+     * which is the only app external clients are allowed to publish to.
+     * Returns: #!::r=ingress/<slug>?secret=<stream_key>,m=publish
      */
     public function getSrtStreamKey()
     {
-        return '#!::r=live/'.$this->slug.'?secret='.$this->stream_key.',m=publish';
+        return '#!::r=ingress/'.$this->slug.'?secret='.$this->stream_key.',m=publish';
     }
 
     /**
