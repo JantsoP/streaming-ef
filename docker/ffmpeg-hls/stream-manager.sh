@@ -243,6 +243,8 @@ start_archive_ffmpeg() {
         2>&1 | sed "s/^/[Archive $stream] /" &
 
     ARCHIVE_PIDS[$stream_key]=$!
+    # Write PID to the shared volume so orphan-reaping works after script restarts.
+    echo "${ARCHIVE_PIDS[$stream_key]}" > "$ARCHIVE_FLAGS_DIR/${stream}.pid"
     echo "[$(date)] Started archive FFmpeg for $stream_key PID ${ARCHIVE_PIDS[$stream_key]}, writing to $archive_dir"
 }
 
@@ -271,12 +273,48 @@ stop_archive_ffmpeg() {
 
         unset ARCHIVE_PIDS[$stream_key]
         local stream="${stream_key#*/}"
+        rm -f "$ARCHIVE_FLAGS_DIR/${stream}.pid"
         echo "[$(date)] Archive FFmpeg stopped for $stream_key. Segments preserved at $ARCHIVE_BASE_DIR/$stream/"
     fi
 }
 
 # Function to check SRS API for active streams
 check_streams() {
+    # ── Orphan reaping ────────────────────────────────────────────────────────
+    # Re-register or kill archive FFmpeg processes started by a previous script
+    # instance (e.g. after container restarts). PID files are written to the
+    # shared volume by start_archive_ffmpeg so they survive script restarts.
+    for pid_file in "$ARCHIVE_FLAGS_DIR"/*.pid; do
+        [[ -f "$pid_file" ]] || continue
+        local orphan_stream; orphan_stream=$(basename "${pid_file%.pid}")
+        local orphan_pid; orphan_pid=$(cat "$pid_file" 2>/dev/null)
+        [[ -z "$orphan_pid" ]] && { rm -f "$pid_file"; continue; }
+
+        local orphan_key="ingress/$orphan_stream"
+        local flag_file="$ARCHIVE_FLAGS_DIR/$orphan_stream"
+
+        if ! kill -0 "$orphan_pid" 2>/dev/null; then
+            # Process is already dead — clean up stale PID file
+            rm -f "$pid_file"
+        elif [[ ! -f "$flag_file" ]]; then
+            # Process running but flag file is gone (End Stream pressed) — kill it
+            echo "[$(date)] Orphaned archive FFmpeg detected for $orphan_stream (PID $orphan_pid, no flag file) — stopping"
+            kill -TERM "$orphan_pid" 2>/dev/null
+            local oc=0
+            while kill -0 "$orphan_pid" 2>/dev/null && (( oc < 20 )); do sleep 1; (( oc++ )); done
+            kill -0 "$orphan_pid" 2>/dev/null && kill -KILL "$orphan_pid" 2>/dev/null
+            rm -f "$pid_file"
+            echo "[$(date)] Orphaned archive FFmpeg $orphan_stream stopped"
+        else
+            # Process running and flag file exists — re-register so the normal
+            # stop logic can manage it going forward.
+            if [[ -z "${ARCHIVE_PIDS[$orphan_key]}" ]] || ! kill -0 "${ARCHIVE_PIDS[$orphan_key]}" 2>/dev/null; then
+                echo "[$(date)] Re-registering orphaned archive FFmpeg for $orphan_stream (PID $orphan_pid)"
+                ARCHIVE_PIDS[$orphan_key]=$orphan_pid
+            fi
+        fi
+    done
+
     # Get current streams from SRS API
     local api_response=$(curl -s "$SRS_API_URL/streams/" 2>/dev/null)
     
