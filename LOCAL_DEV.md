@@ -83,6 +83,8 @@ DB_PASSWORD=password
 REDIS_HOST=redis
 REDIS_PORT=6379
 
+QUEUE_CONNECTION=redis
+
 # WebSockets — Use VM IP for client connections from other machines
 BROADCAST_DRIVER=reverb
 REVERB_APP_ID=my-app-id        # any string
